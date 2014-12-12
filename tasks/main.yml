@@ -1,0 +1,6 @@
+---
+- include: system_user.yml
+- include: install.yml
+- include: configure.yml
+- include: genesis.yml
+  when: jenkins_genesis

@@ -1,0 +1,77 @@
+#!/bin/bash
+
+. /etc/default/jenkins
+
+PIDFILE=/var/run/jenkins.pid
+function start_jenkins {
+    if [ -e $PIDFILE ] ; then
+        echo "already running"
+        exit 1
+    else
+        touch $PIDFILE
+        chown jenkins:jenkins $PIDFILE
+        su -s /bin/bash jenkins -c "
+                  cd /tmp && \
+                  exec setsid java -jar $JENKINS_HOME/jenkins.war --httpPort=7070 --httpListenAddress=127.0.0.1 \
+                  --prefix=$JENKINS_PREFIX </dev/null >>/var/log/jenkins/console_log 2>&1 &
+                  echo \$! > $PIDFILE
+                  disown \$!"
+    fi
+}
+
+function stop_jenkins {
+    if [ ! -e $PIDFILE ] ; then
+        echo "No PIDFILE!"
+        exit 1
+    fi
+    PID=$(cat $PIDFILE)
+    kill $PID
+    rm $PIDFILE
+    echo -n "Waiting."
+    for f in `seq 1 12` ; do
+        sleep 5
+        ps $PID &> /dev/null
+        if [ $? == 1 ] ; then
+            echo "done"
+            exit 0
+        else
+            echo -n "."
+        fi
+    done
+    echo "fail"
+    exit 1
+}
+
+function status_jenkins {
+    if [ -e $PIDFILE ] ; then
+        ps $(cat $PIDFILE) &> /dev/null
+        if [ $? == 0 ] ; then
+            echo "Seems OK"
+        else
+            echo "Not OK"
+            exit 1
+        fi
+    else
+        echo "Not OK"
+        exit 1
+    fi
+}
+
+case $1 in
+    start)
+        start_jenkins
+        ;;
+    stop)
+        stop_jenkins
+        ;;
+    status)
+        status_jenkins
+        ;;
+    restart)
+        stop_jenkins
+        start_jenkins
+        ;;
+    *)
+        exit 0
+        ;;
+esac

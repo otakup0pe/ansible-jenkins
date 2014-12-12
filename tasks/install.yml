@@ -1,0 +1,33 @@
+---
+- name: download war
+  get_url: dest="{{jenkins_home}}/jenkins.war" owner=jenkins group=jenkins mode=0660 url="http://mirrors.jenkins-ci.org/war/{{jenkins_version}}/jenkins.war"
+- name: install control script
+  copy: src=jenkins_init dest=/usr/local/sbin/jenkins mode=0770
+- name: install init defaults
+  template: src=jenkins_default dest=/etc/default/jenkins
+  notify: restart jenkins
+- name: make log directory
+  file: path=/var/log/jenkins state=directory group=jenkins owner=root mode=0770
+- name: install monit recipe
+  copy: src=jenkins_monit dest=/etc/monit/conf.d/jenkins.conf force=yes
+  register: jenkins_monit
+- name: restart monit
+  when: jenkins_monit.changed
+  service: name=monit state=restarted
+- name: start jenkins
+  command: monit start jenkins
+- include: "wait_for.yml"
+- name: fetch jenkins-cli
+  get_url: url="http://localhost:7070/{{jenkins_prefix}}/jnlpJars/jenkins-cli.jar" dest="{{ jenkins_home }}"
+  register: jarfile_get
+  until: "'OK' in jarfile_get.msg or 'file already exists' in jarfile_get.msg"
+  retries: 5
+  delay: 5
+- name: create updates folder
+  file: path="{{jenkins_home}}/.jenkins/updates" owner=jenkins group=jenkins mode=0755 state=directory
+- name: update plugin data
+  shell: "curl -L http://updates.jenkins-ci.org/update-center.json | sed '1d;$d' > {{jenkins_home}}/.jenkins/updates/default.json"
+  args:
+    creates: "{{jenkins_home}}/.jenkins/updates/default.json"
+- name: set permissions for update data
+  file: path="{{jenkins_home}}/.jenkins/updates/default.json" owner=jenkins group=jenkins mode=0644

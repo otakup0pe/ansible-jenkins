@@ -1,0 +1,5 @@
+{
+  {% for e in jenkins_envinject -%}
+  "{{e.name}}" : "{{e.value}}"{% if not loop.last %}, {% endif %}
+  {% endfor %}
+}

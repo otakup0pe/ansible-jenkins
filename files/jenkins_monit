@@ -1,0 +1,5 @@
+check process jenkins with pidfile /var/run/jenkins.pid
+  every 5 cycles
+  start program = "/usr/local/sbin/jenkins start"
+  stop  program = "/usr/local/sbin/jenkins stop"
+  if 5 restarts within 10 cycles then timeout

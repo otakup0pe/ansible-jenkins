@@ -1,0 +1,11 @@
+---
+- name: wait for jenkins to start
+  wait_for: host=localhost port=7070 timeout=300
+- action: uri url=http://localhost:7070 timeout=300 return_content=yes
+  register: jenkins_up
+  retries: 30
+  delay: 10
+  until: jenkins_up.status == 200
+- name: "fail if not working"
+  fail: msg="jenkins fucked"
+  when: jenkins_up.content.find('AUTO REFRESH') == -1

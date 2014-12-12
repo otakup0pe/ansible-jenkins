@@ -1,0 +1,3 @@
+JENKINS_OPTS=""
+JENKINS_HOME="{{ jenkins_home }}"
+JENKINS_PREFIX="{{ jenkins_prefix }}"

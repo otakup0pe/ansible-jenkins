@@ -1,0 +1,47 @@
+---
+- name: check if user exists
+  command: "test -e {{jenkins_home}}/.jenkins/users/{{jenkins_control_user}}/config.xml"
+  register: jenkins_user
+  ignore_errors: true
+  changed_when: false
+- name: install pre plugin
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} install-plugin {{item}}"
+  args:
+    creates: "{{jenkins_home}}/.jenkins/plugins/{{item}}.jpi"
+  with_items: jenkins_pre_plugins
+- name: restart jenkins once
+  command: monit restart jenkins
+  when: jenkins_user.rc == 1
+- include: "wait_for.yml"
+  when: jenkins_user.rc == 1
+- name: copy configuration groovy
+  copy: src="jenkins_{{item}}.groovy" dest="{{jenkins_home}}" owner=jenkins group=jenkins mode=0750
+  with_items:
+  - user
+  - security_github
+  - envinject
+  - location
+- name: create control user
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070{{jenkins_prefix}} groovy {{jenkins_home}}/jenkins_user.groovy '{{jenkins_control_user}}' '{{jenkins_control_name}}' '{{jenkins_control_email}}' {{jenkins_home}}/.ssh/id_rsa.pub"
+  when: jenkins_user.rc == 1
+- name: secure jenkins
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} groovy {{jenkins_home}}/jenkins_security_github.groovy '{{jenkins_github_key}}' '{{jenkins_github_secret}}'"
+  when: jenkins_user.rc == 1
+  notify: restart jenkins
+- name: install plugins
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa install-plugin {{item}}"
+  args:
+    creates: "{{jenkins_home}}/.jenkins/plugins/{{item}}.jpi"
+  with_items: jenkins_plugins
+  notify: restart jenkins
+- name: restart jenkins once
+  command: monit restart jenkins
+  when: jenkins_user.rc == 1
+- include: "wait_for.yml"
+  when: jenkins_user.rc == 1
+- name: write jenkins paths
+  template: src="jenkins_envinject.json" dest="{{jenkins_home}}/jenkins_envinject.json" owner=jenkins group=jenkins mode=0660
+- name: configure paths
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa groovy {{jenkins_home}}/jenkins_envinject.groovy '{{jenkins_home}}/jenkins_envinject.json'"
+- name: configure location
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa groovy {{jenkins_home}}/jenkins_location.groovy '{{jenkins_url}}' '{{jenkins_email}}'"

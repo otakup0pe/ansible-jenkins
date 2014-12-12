@@ -1,0 +1,5 @@
+jenkins_pre_plugins:
+- git
+- credentials
+- github-api
+- github-oauth

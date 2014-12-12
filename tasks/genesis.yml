@@ -1,0 +1,17 @@
+---
+- name: generate genesis xml
+  template: src="{{jenkins_genesis_template}}" dest=/var/cache/ansible/genesis.xml
+  register: genesis_xml
+- name: check for genesis job
+  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa get-job genesis"
+  failed_when: False
+  register: genesis_job
+- name: create genesis job
+  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa create-job genesis < /var/cache/ansible/genesis.xml"
+  when: genesis_job.rc == 255
+- name: update genesis job
+  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa update-job genesis < /var/cache/ansible/genesis.xml"
+  when: genesis_job.rc == 0 and genesis_xml.changed
+- name: build genesis
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa build genesis -c -s"
+  when:  genesis_xml.changed

@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+function problems {
+    echo "ERROR: ${1}"
+    exit 1
+}
+
+cat <<'EOF' > ci-env/ansible-inventory
+[local]
+127.0.0.1
+EOF
+
+if [ ! -d "ci-env" ] ; then
+    virtualenv ci-env || problems "unable to create virtualenv"
+fi
+. ci-env/bin/activate || problems "unable to activate virtualenv"
+
+export ARCHFLAGS="-Wno-error=unused-command-line-argument-hard-error-in-future" && \
+pip install --upgrade -r requirements.txt || problems "unable to install dependencies"
+
+ansible-playbook --syntax-check -i ci-env/ansible-inventory test.yml
