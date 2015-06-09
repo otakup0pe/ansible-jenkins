@@ -1,6 +1,8 @@
 ---
 - name: ensure user exists
   user: name=jenkins state=present shell=/bin/bash
+- name: ensure ssh directory exists
+  file: path="{{jenkins_home}}/.ssh" state="directory" mode=0700
 - name: copy public sshkey
   copy: src="{{jenkins_public_key}}" dest="{{jenkins_home}}/.ssh/id_rsa.pub" owner=jenkins group=jenkins mode=0600
 - name: copy private sshkey

@@ -1,3 +1,5 @@
 ---
 dependencies:
-- { role: ANXS.monit }
+- role: smola.java
+  java_packages: openjdk-7-jdk
+- role: ANXS.monit
