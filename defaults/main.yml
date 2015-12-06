@@ -35,3 +35,15 @@ jenkins_plugins:
 - job-dsl
 - downstream-ext
 - envinject
+
+jenkins_auth: "none" # or github-free-for-all or github-protected
+
+jenkins_github_auth:
+admins: []
+orgs: []
+anon_read: no
+auth_read: no
+cc_read: yes
+hooks: yes
+repo_perms: no
+auth_create: no

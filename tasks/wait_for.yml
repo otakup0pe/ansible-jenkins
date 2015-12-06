@@ -1,11 +1,11 @@
 ---
 - name: wait for jenkins to start
   wait_for: host=localhost port=7070 timeout=300
-- action: uri url=http://localhost:7070 timeout=300 return_content=yes
+- action: uri url=http://localhost:7070 timeout=300 return_content=yes status_code=200,403
   register: jenkins_up
   retries: 30
   delay: 10
-  until: jenkins_up.status == 200
+  until: jenkins_up.status == 200 or jenkins_up.status == 403
 - name: "fail if not working"
   fail: msg="jenkins fucked"
-  when: jenkins_up.content.find('AUTO REFRESH') == -1
+  when: jenkins_up.content.find('AUTO REFRESH') == -1 and jenkins_up.content.find('Authentication required') == -1

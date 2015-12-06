@@ -24,3 +24,7 @@ Role Variables
 * `jenkins_envinject` -- This is a complex variable which is used to automatically configure the Envinject plugin. It is a list of two part dicts. The `name` and `value` represent both parts of an Environment variable.
 * `jenkins_public_key` -- This is the file name of a public SSH key which will be associated with the Jenkins control user
 * `jenkins_private_key` -- This is the file name of a private SSH key which will be used by the role to configure the Jenkins instance
+* `jenkins_auth` -- This is defaults to `none` but may also be `github_free_for_all` or `github_protected`.
+
+Authentication
+--------------

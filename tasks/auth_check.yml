@@ -1,0 +1,15 @@
+- include: "wait_for.yml"
+- name: check if auth is actually required
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070{{jenkins_prefix}} groovy"
+  register: auth_check
+  changed_when: False
+  failed_when: auth_check.stderr.find('anonymous is missing') == -1 and auth_check.stderr.find('Groovy script') == -1
+- debug: msg="ASDASD {{auth_check.stderr}}"
+- name: (re)set jenkins_needs_auth variable to NO
+  set_fact:
+    jenkins_needs_auth: false
+  when: auth_check.stderr.find('Groovy script') > 0
+- name: (re)set jenkins_needs_auth variable to YES
+  set_fact:
+    jenkins_needs_auth: true
+  when: auth_check.stderr.find('anonymous is missing') > 0

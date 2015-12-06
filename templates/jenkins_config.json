@@ -1,0 +1,9 @@
+{
+  "environment": {
+    {% for e in jenkins_envinject -%}
+    "{{e.name}}" : "{{e.value}}"{% if not loop.last %}, {% endif %}
+    {% endfor %}
+  },
+  "url": "{{jenkins_url}}",
+  "email": "{{jenkins_email}}"
+}

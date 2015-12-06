@@ -1,0 +1,23 @@
+{
+{% if jenkins_auth == "github-free-for-all" or jenkins_auth == "github-protected" -%}
+  "github_key": "{{jenkins_github_key}}",
+  "github_secret" :"{{jenkins_github_secret}}",
+{% endif -%}
+{% if jenkins_auth == "github-protected" -%}
+  "github_admins": [
+    {% for a in jenkins_github_auth.admins %}"{{a}}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "github_orgs": [
+    {% for a in jenkins_github_auth.orgs %}"{{a}}"{% if not loop.last %},{% endif %}
+    {% endfor %}
+  ],
+  "github_anon_read": {{jenkins_github_auth.anon_read|lower}},
+  "github_auth_read": {{jenkins_github_auth.auth_read|lower}},
+  "github_cc_read": {{jenkins_github_auth.cc_read|lower}},
+  "github_hooks": {{jenkins_github_auth.hooks|lower}},
+  "github_repo_perms": {{jenkins_github_auth.repo_perms|lower}},
+  "github_auth_create": {{jenkins_github_auth.auth_create|lower}},
+{% endif -%}
+  "auth_type": "{{jenkins_auth}}"
+}

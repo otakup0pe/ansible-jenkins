@@ -1,13 +1,14 @@
-#!/bin/bash
-
-. /etc/default/jenkins
+#!/usr/bin/env bash
 
 PIDFILE=/var/run/jenkins.pid
-function start_jenkins {
-    if [ -e $PIDFILE ] ; then
-        echo "already running"
-        exit 1
-    else
+
+if [ ! -e /etc/default/jenkins ] ; then
+    echo "Configuration missing"
+    exit 1
+fi
+. /etc/default/jenkins
+
+function really_start_jenkins {
         touch $PIDFILE
         chown jenkins:jenkins $PIDFILE
         su -s /bin/bash jenkins -c "
@@ -16,6 +17,21 @@ function start_jenkins {
                   --prefix=$JENKINS_PREFIX </dev/null >>/var/log/jenkins/console_log 2>&1 &
                   echo \$! > $PIDFILE
                   disown \$!"
+        exit 0
+}
+
+function start_jenkins {
+    if [ -e $PIDFILE ] ; then
+        ps $(cat $PIDFILE) &> /dev/null
+        if [ $? == 0 ] ; then
+            echo "already running"
+            exit 1
+        else
+            echo "crashed!"
+            really_start_jenkins
+        fi
+    else
+        really_start_jenkins
     fi
 }
 

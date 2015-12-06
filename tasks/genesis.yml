@@ -1,6 +1,8 @@
 ---
 - name: generate genesis xml
-  template: src="{{jenkins_genesis_template}}" dest=/var/cache/ansible/genesis.xml
+  template:
+    src: "{{jenkins_genesis_template}}"
+    dest: /var/cache/ansible/genesis.xml
   register: genesis_xml
 - name: check for genesis job
   shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa get-job genesis"

@@ -14,34 +14,74 @@
   when: jenkins_user.rc == 1
 - include: "wait_for.yml"
   when: jenkins_user.rc == 1
-- name: copy configuration groovy
-  copy: src="jenkins_{{item}}.groovy" dest="{{jenkins_home}}" owner=jenkins group=jenkins mode=0750
-  with_items:
-  - user
-  - security_github
-  - envinject
-  - location
+- name: copy jenkins security groovy
+  copy:
+    src: "jenkins_security.groovy"
+    dest: "{{jenkins_home}}"
+    owner: jenkins
+    group: jenkins
+    mode: 0750
+  register: jenkins_security_groovy
+- name: write jenkins security config
+  template:
+    src: "jenkins_security.json"
+    dest: "{{jenkins_home}}/jenkins_security.json"
+    owner: jenkins
+    group: jenkins
+    mode: 0660
+  register: jenkins_security_config
 - name: create control user
   command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070{{jenkins_prefix}} groovy {{jenkins_home}}/jenkins_user.groovy '{{jenkins_control_user}}' '{{jenkins_control_name}}' '{{jenkins_control_email}}' {{jenkins_home}}/.ssh/id_rsa.pub"
   when: jenkins_user.rc == 1
+- include: auth_check.yml
 - name: secure jenkins
-  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} groovy {{jenkins_home}}/jenkins_security_github.groovy '{{jenkins_github_key}}' '{{jenkins_github_secret}}'"
-  when: jenkins_user.rc == 1
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} groovy {{jenkins_home}}/jenkins_security.groovy '{{jenkins_home}}/jenkins_security.json'"
+  when: ( jenkins_security_config.changed or jenkins_security_groovy.changed ) and ( not jenkins_needs_auth|default(jenkins_auth != "none") or jenkins_user.rc == 1 )
   notify: restart jenkins
+- name: secure jenkins
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa groovy {{jenkins_home}}/jenkins_security.groovy '{{jenkins_home}}/jenkins_security.json'"
+  when: ( jenkins_security_config.changed or jenkins_security_groovy.changed ) and ( jenkins_user.rc == 0 and jenkins_needs_auth|default(jenkins_auth != "none") )
+  notify: restart jenkins
+- meta: flush_handlers
+- include: auth_check.yml
 - name: install plugins
   command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa install-plugin {{item}}"
   args:
     creates: "{{jenkins_home}}/.jenkins/plugins/{{item}}.jpi"
   with_items: jenkins_plugins
+  when: jenkins_needs_auth|default(jenkins_auth != 'none')
+  notify: restart jenkins
+- name: install plugins
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} install-plugin {{item}}"
+  args:
+    creates: "{{jenkins_home}}/.jenkins/plugins/{{item}}.jpi"
+  with_items: jenkins_plugins
+  when: not jenkins_needs_auth|default(jenkins_auth != 'none')
   notify: restart jenkins
 - name: restart jenkins once
   command: monit restart jenkins
   when: jenkins_user.rc == 1
 - include: "wait_for.yml"
   when: jenkins_user.rc == 1
-- name: write jenkins paths
-  template: src="jenkins_envinject.json" dest="{{jenkins_home}}/jenkins_envinject.json" owner=jenkins group=jenkins mode=0660
-- name: configure paths
-  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa groovy {{jenkins_home}}/jenkins_envinject.groovy '{{jenkins_home}}/jenkins_envinject.json'"
-- name: configure location
-  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa groovy {{jenkins_home}}/jenkins_location.groovy '{{jenkins_url}}' '{{jenkins_email}}'"
+- name: write jenkins base groovy
+  copy:
+    src: "jenkins_config.groovy"
+    dest: "{{jenkins_home}}/jenkins_config.groovy"
+    owner: jenkins
+    group: jenkins
+    mode: 0660
+  register: jenkins_base_groovy
+- name: write jenkins base config
+  template:
+    src: "jenkins_config.json"
+    dest: "{{jenkins_home}}/jenkins_config.json"
+    owner: jenkins
+    group: jenkins
+    mode: 0660
+  register: jenkins_base_config
+- name: configure base jenkins
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa groovy {{jenkins_home}}/jenkins_config.groovy '{{jenkins_home}}/jenkins_config.json'"
+  when: ( jenkins_base_config.changed or jenkins_base_groovy.changed ) and jenkins_needs_auth|default(jenkins_auth != "none")
+- name: configure base jenkins
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} groovy {{jenkins_home}}/jenkins_config.groovy '{{jenkins_home}}/jenkins_config.json'"
+  when: ( jenkins_base_config.changed or jenkins_base_groovy.changed ) and not jenkins_needs_auth|default(jenkins_auth != "none")
