@@ -30,14 +30,11 @@
     group: jenkins
     mode: 0660
   register: jenkins_security_config
-- name: create control user
-  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070{{jenkins_prefix}} groovy {{jenkins_home}}/jenkins_user.groovy '{{jenkins_control_user}}' '{{jenkins_control_name}}' '{{jenkins_control_email}}' {{jenkins_home}}/.ssh/id_rsa.pub"
-  when: jenkins_user.rc == 1
-- include: auth_check.yml
 - name: secure jenkins
   command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} groovy {{jenkins_home}}/jenkins_security.groovy '{{jenkins_home}}/jenkins_security.json'"
   when: ( jenkins_security_config.changed or jenkins_security_groovy.changed ) and ( not jenkins_needs_auth|default(jenkins_auth != "none") or jenkins_user.rc == 1 )
   notify: restart jenkins
+- include: auth_check.yml
 - name: secure jenkins
   command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa groovy {{jenkins_home}}/jenkins_security.groovy '{{jenkins_home}}/jenkins_security.json'"
   when: ( jenkins_security_config.changed or jenkins_security_groovy.changed ) and ( jenkins_user.rc == 0 and jenkins_needs_auth|default(jenkins_auth != "none") )

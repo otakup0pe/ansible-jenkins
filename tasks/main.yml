@@ -1,6 +1,9 @@
 ---
 - include: system_user.yml
+  when: jenkins_action == "install"
 - include: install.yml
+  when: jenkins_action == "install"
 - include: configure.yml
+  when: jenkins_action == "install"
 - include: genesis.yml
   when: jenkins_genesis

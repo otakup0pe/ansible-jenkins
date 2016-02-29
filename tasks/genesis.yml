@@ -1,19 +1,41 @@
 ---
+- name: install genesis helper script
+  copy:
+    src: 'jenkins-genesis.sh'
+    dest: '/usr/local/bin/jenkins-genesis'
+    owner: 'root'
+    group: 'root'
+    mode: 0755
 - name: generate genesis xml
   template:
-    src: "{{jenkins_genesis_template}}"
-    dest: /var/cache/ansible/genesis.xml
+    src: 'genesis.xml'
+    dest: "{{jenkins_home}}/genesis.xml"
   register: genesis_xml
 - name: check for genesis job
   shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa get-job genesis"
   failed_when: False
   register: genesis_job
+  when: jenkins_needs_auth|default(jenkins_auth != 'none')
 - name: create genesis job
-  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa create-job genesis < /var/cache/ansible/genesis.xml"
-  when: genesis_job.rc == 255
+  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa create-job genesis < {{jenkins_home}}/genesis.xml"
+  when: jenkins_needs_auth|default(jenkins_auth != 'none') and genesis_job.rc == 255
 - name: update genesis job
-  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa update-job genesis < /var/cache/ansible/genesis.xml"
-  when: genesis_job.rc == 0 and genesis_xml.changed
+  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa update-job genesis < {{jenkins_home}}/genesis.xml"
+  when: jenkins_needs_auth|default(jenkins_auth != 'none') and genesis_job.rc == 0 and genesis_xml.changed
 - name: build genesis
   command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} -i {{jenkins_home}}/.ssh/id_rsa build genesis -c -s"
-  when:  genesis_xml.changed
+  when: jenkins_needs_auth|default(jenkins_auth != 'none') and genesis_xml.changed
+- name: check for genesis job
+  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} get-job genesis"
+  failed_when: False
+  register: genesis_job
+  when: not jenkins_needs_auth|default(jenkins_auth != 'none')
+- name: create genesis job
+  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} create-job genesis < {{jenkins_home}}/genesis.xml"
+  when: not jenkins_needs_auth|default(jenkins_auth != 'none') and genesis_job.rc == 255
+- name: update genesis job
+  shell: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} update-job genesis < {{jenkins_home}}/genesis.xml"
+  when: genesis_job.rc == 0 and genesis_xml.changed and not jenkins_needs_auth|default(jenkins_auth != 'none')
+- name: build genesis
+  command: "java -jar {{jenkins_home}}/jenkins-cli.jar -s http://localhost:7070/{{jenkins_prefix}} build genesis -c -s"
+  when: genesis_xml.changed and not jenkins_needs_auth|default(jenkins_auth != 'none')
